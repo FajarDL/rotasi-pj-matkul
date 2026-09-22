@@ -1,3 +1,12 @@
+export type UserRole = 'admin' | 'student';
+
+export interface AuthSession {
+  isAuthenticated: boolean;
+  role: UserRole;
+  userName: string;
+  studentNim?: string;
+}
+
 export interface Student {
   id: string;
   nim: string;
@@ -38,8 +47,20 @@ export interface RotationConfig {
   pjCountPerSession: number;
   mode: RotationMode;
   startDate: string;
-  intervalDays: number; // usually 7 (weekly)
-  excludeSessionNumbers?: number[]; // e.g. [8, 16] for UTS & UAS
+  intervalDays: number;
+  excludeSessionNumbers?: number[];
+}
+
+export interface CoursePreset {
+  code: string;
+  name: string;
+  lecturer: string;
+  day: string;
+  startTime: string;
+  endTime: string;
+  room: string;
+  totalSessions: number;
+  topics: string[];
 }
 
 export interface AppState {
@@ -47,4 +68,5 @@ export interface AppState {
   students: Student[];
   sessions: SessionSchedule[];
   activeCourseId: string | null;
+  adminPin?: string; // default hashed or stored PIN
 }

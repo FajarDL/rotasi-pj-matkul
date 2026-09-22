@@ -1,16 +1,23 @@
 import { useState, useEffect } from 'react';
-import type { AppState, Course, SessionSchedule, Student, SessionStatus } from './types';
+import type { AppState, Course, SessionSchedule, Student, SessionStatus, AuthSession } from './types';
 import { storageService } from './services/storageService';
+import { authService } from './services/authService';
 import { Navbar } from './components/Navbar';
 import { DashboardView } from './components/DashboardView';
 import { ScheduleView } from './components/ScheduleView';
 import { StudentManager } from './components/StudentManager';
 import { CourseManager } from './components/CourseManager';
 import { PrintScheduleView } from './components/PrintScheduleView';
+import { LoginModal } from './components/LoginModal';
+import { SecuritySettingsModal } from './components/SecuritySettingsModal';
 import { CheckCircle2, BookOpen } from 'lucide-react';
 
 export function App() {
   const [data, setData] = useState<AppState>(() => storageService.loadData());
+  const [authSession, setAuthSession] = useState<AuthSession>(() => authService.getSession());
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [isSecurityModalOpen, setIsSecurityModalOpen] = useState(false);
+
   const [activeTab, setActiveTab] = useState<'dashboard' | 'schedule' | 'students' | 'courses'>('dashboard');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
@@ -45,6 +52,37 @@ export function App() {
     showToast('Data mata kuliah diperbarui');
   };
 
+  // Add course with curriculum preset (autofills syllabus topics for 16 sessions)
+  const handleAddCourseWithPreset = (newCourse: Course, topics: string[]) => {
+    const today = new Date();
+    const newSessions: SessionSchedule[] = [];
+
+    for (let i = 1; i <= newCourse.totalSessions; i++) {
+      const sDate = new Date(today);
+      sDate.setDate(today.getDate() + (i - 1) * 7);
+      const topic = topics[i - 1] || `Pertemuan ${i}`;
+
+      newSessions.push({
+        id: `sess-${newCourse.id}-${i}-${Date.now()}`,
+        courseId: newCourse.id,
+        sessionNumber: i,
+        date: sDate.toISOString().split('T')[0],
+        topic,
+        assignedPjIds: [],
+        status: 'upcoming',
+      });
+    }
+
+    setData((prev) => ({
+      ...prev,
+      courses: [...prev.courses, newCourse],
+      sessions: [...prev.sessions, ...newSessions],
+      activeCourseId: newCourse.id,
+    }));
+
+    showToast(`Mata kuliah ${newCourse.name} & 16 silabus berhasil dibuat otomatis!`);
+  };
+
   const handleDeleteCourse = (courseId: string) => {
     setData((prev) => {
       const remainingCourses = prev.courses.filter((c) => c.id !== courseId);
@@ -57,13 +95,13 @@ export function App() {
         activeCourseId: newActiveId,
       };
     });
-    showToast('Mata kuliah dihapus');
+    showToast('Mata kuliah berhasil dihapus');
   };
 
   // Handlers for Students
   const handleUpdateStudents = (newStudents: Student[]) => {
     setData((prev) => ({ ...prev, students: newStudents }));
-    showToast('Daftar mahasiswa berhasil diperbarui');
+    showToast('Data mahasiswa berhasil diperbarui');
   };
 
   // Handlers for Sessions
@@ -90,29 +128,34 @@ export function App() {
   // Backup & Restore
   const handleBackup = () => {
     storageService.exportBackup(data);
-    showToast('File backup berhasil diunduh');
+    showToast('File cadangan data berhasil diunduh');
   };
 
   const handleRestore = async (file: File) => {
     try {
       const restored = await storageService.importBackup(file);
       setData(restored);
-      showToast('Data berhasil dipulihkan dari file backup!');
+      showToast('Data berhasil dipulihkan dari file!');
     } catch (err) {
       alert((err as Error).message);
     }
   };
 
   const handleReset = () => {
-    if (confirm('Apakah Anda yakin ingin mereset seluruh data kembali ke contoh data awal?')) {
+    if (confirm('Apakah Anda yakin ingin mereset seluruh data kembali ke contoh awal?')) {
       const defaultData = storageService.getDefaultData();
       setData(defaultData);
-      showToast('Data telah direset ke contoh awal');
+      showToast('Data telah dikembalikan ke contoh awal');
     }
   };
 
+  const handleLoginSuccess = (session: AuthSession) => {
+    setAuthSession(session);
+    showToast(`Masuk sebagai ${session.userName}`);
+  };
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans">
+    <div className="min-h-screen bg-slate-100/60 flex flex-col font-sans antialiased text-slate-900">
       
       {/* Toast Notification */}
       {toastMessage && (
@@ -128,11 +171,21 @@ export function App() {
         setActiveTab={setActiveTab}
         courses={data.courses}
         activeCourseId={activeCourse?.id || null}
+        userRole={authSession.role}
+        userName={authSession.userName}
         onSelectCourse={handleSelectCourse}
         onBackup={handleBackup}
         onRestore={handleRestore}
         onReset={handleReset}
-        onOpenNewCourse={() => setActiveTab('courses')}
+        onOpenNewCourse={() => {
+          if (authSession.role !== 'admin') {
+            setIsLoginModalOpen(true);
+          } else {
+            setActiveTab('courses');
+          }
+        }}
+        onOpenLogin={() => setIsLoginModalOpen(true)}
+        onOpenSecurity={() => setIsSecurityModalOpen(true)}
       />
 
       {/* Main Content Area */}
@@ -144,9 +197,12 @@ export function App() {
                 course={activeCourse}
                 students={data.students}
                 sessions={data.sessions}
+                userRole={authSession.role}
+                currentStudentNim={authSession.studentNim}
                 onNavigateToSchedule={() => setActiveTab('schedule')}
                 onNavigateToStudents={() => setActiveTab('students')}
                 onToggleSessionStatus={handleToggleSessionStatus}
+                onRequestLogin={() => setIsLoginModalOpen(true)}
               />
             )}
 
@@ -155,7 +211,9 @@ export function App() {
                 course={activeCourse}
                 students={data.students}
                 sessions={data.sessions}
+                userRole={authSession.role}
                 onUpdateSessions={handleUpdateSessions}
+                onRequestLogin={() => setIsLoginModalOpen(true)}
               />
             )}
 
@@ -164,7 +222,9 @@ export function App() {
                 students={data.students}
                 sessions={data.sessions}
                 activeCourseId={activeCourse.id}
+                userRole={authSession.role}
                 onUpdateStudents={handleUpdateStudents}
+                onRequestLogin={() => setIsLoginModalOpen(true)}
               />
             )}
 
@@ -173,25 +233,34 @@ export function App() {
                 courses={data.courses}
                 activeCourseId={activeCourse.id}
                 sessions={data.sessions}
+                userRole={authSession.role}
                 onSelectCourse={(id) => {
                   handleSelectCourse(id);
                   setActiveTab('dashboard');
                 }}
                 onUpdateCourses={handleUpdateCourses}
                 onDeleteCourse={handleDeleteCourse}
+                onAddCourseWithPreset={handleAddCourseWithPreset}
+                onRequestLogin={() => setIsLoginModalOpen(true)}
               />
             )}
           </>
         ) : (
           <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-xs max-w-md mx-auto my-12">
-            <BookOpen className="w-12 h-12 text-indigo-500 mx-auto mb-4" />
-            <h2 className="text-xl font-bold text-slate-800">Belum Ada Mata Kuliah</h2>
-            <p className="text-xs text-slate-500 mt-2 mb-6">
+            <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-4" />
+            <h2 className="text-lg font-bold text-slate-800">Belum Ada Mata Kuliah</h2>
+            <p className="text-xs text-slate-500 mt-1 mb-6">
               Mulai dengan menambahkan mata kuliah pertama untuk mengelola jadwal rotasi PJ.
             </p>
             <button
-              onClick={() => setActiveTab('courses')}
-              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold text-xs px-5 py-2.5 rounded-xl shadow-xs"
+              onClick={() => {
+                if (authSession.role !== 'admin') {
+                  setIsLoginModalOpen(true);
+                } else {
+                  setActiveTab('courses');
+                }
+              }}
+              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs"
             >
               Tambah Mata Kuliah
             </button>
@@ -199,7 +268,7 @@ export function App() {
         )}
       </main>
 
-      {/* Print View for PDF generation (only rendered on window.print()) */}
+      {/* Print View for PDF generation */}
       {activeCourse && (
         <PrintScheduleView
           course={activeCourse}
@@ -208,24 +277,38 @@ export function App() {
         />
       )}
 
-      {/* Modern Footer */}
-      <footer className="border-t border-slate-200 bg-white py-6 mt-auto no-print">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
+      {/* Modals for Auth and Security */}
+      <LoginModal
+        isOpen={isLoginModalOpen}
+        onClose={() => setIsLoginModalOpen(false)}
+        students={data.students}
+        onLoginSuccess={handleLoginSuccess}
+      />
+
+      <SecuritySettingsModal
+        isOpen={isSecurityModalOpen}
+        onClose={() => setIsSecurityModalOpen(false)}
+        onSuccess={(msg) => showToast(msg)}
+      />
+
+      {/* Professional Academic Footer */}
+      <footer className="border-t border-slate-200 bg-white py-5 mt-auto no-print">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
           <div className="flex items-center gap-2">
-            <span className="font-semibold text-slate-700">Rotasi PJ Matkul</span>
+            <span className="font-bold text-slate-800">SI-ROTASI</span>
             <span>&bull;</span>
-            <span>Aplikasi Pembagian Penanggung Jawab Perkuliahan</span>
+            <span>Sistem Informasi Manajemen Rotasi Penanggung Jawab Akademik</span>
           </div>
 
-          <div className="flex items-center gap-4">
-            <span className="bg-emerald-50 text-emerald-700 font-semibold px-2 py-0.5 rounded-md border border-emerald-200">
-              Penyimpanan: Offline / LocalStorage Aktif
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
+              Peran Aktif: {authSession.role === 'admin' ? 'Administrator' : 'Mahasiswa (View-Only)'}
             </span>
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-              className="text-indigo-600 hover:underline font-medium"
+              className="text-slate-700 hover:text-slate-900 font-medium"
             >
-              Ke Atas &uarr;
+              Kembali ke Atas &uarr;
             </button>
           </div>
         </div>
