@@ -142,10 +142,10 @@ export function App() {
   };
 
   const handleReset = () => {
-    if (confirm('Apakah Anda yakin ingin mereset seluruh data kembali ke contoh awal?')) {
-      const defaultData = storageService.getDefaultData();
-      setData(defaultData);
-      showToast('Data telah dikembalikan ke contoh awal');
+    if (confirm('Apakah Anda yakin ingin menghapus seluruh data? Semua mata kuliah, jadwal, dan daftar mahasiswa akan dikosongkan.')) {
+      const emptyData = storageService.clearAllData();
+      setData(emptyData);
+      showToast('Seluruh data berhasil dihapus dan dikosongkan.');
     }
   };
 
@@ -190,81 +190,99 @@ export function App() {
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 no-print">
-        {activeCourse ? (
-          <>
-            {activeTab === 'dashboard' && (
-              <DashboardView
-                course={activeCourse}
-                students={data.students}
-                sessions={data.sessions}
-                userRole={authSession.role}
-                currentStudentNim={authSession.studentNim}
-                onNavigateToSchedule={() => setActiveTab('schedule')}
-                onNavigateToStudents={() => setActiveTab('students')}
-                onToggleSessionStatus={handleToggleSessionStatus}
-                onRequestLogin={() => setIsLoginModalOpen(true)}
-              />
-            )}
+        {activeTab === 'students' && (
+          <StudentManager
+            students={data.students}
+            sessions={data.sessions}
+            activeCourseId={activeCourse?.id || null}
+            userRole={authSession.role}
+            onUpdateStudents={handleUpdateStudents}
+            onRequestLogin={() => setIsLoginModalOpen(true)}
+          />
+        )}
 
-            {activeTab === 'schedule' && (
-              <ScheduleView
-                course={activeCourse}
-                students={data.students}
-                sessions={data.sessions}
-                userRole={authSession.role}
-                onUpdateSessions={handleUpdateSessions}
-                onRequestLogin={() => setIsLoginModalOpen(true)}
-              />
-            )}
+        {activeTab === 'courses' && (
+          <CourseManager
+            courses={data.courses}
+            activeCourseId={activeCourse?.id || null}
+            sessions={data.sessions}
+            userRole={authSession.role}
+            onSelectCourse={(id) => {
+              handleSelectCourse(id);
+              setActiveTab('dashboard');
+            }}
+            onUpdateCourses={handleUpdateCourses}
+            onDeleteCourse={handleDeleteCourse}
+            onAddCourseWithPreset={handleAddCourseWithPreset}
+            onRequestLogin={() => setIsLoginModalOpen(true)}
+          />
+        )}
 
-            {activeTab === 'students' && (
-              <StudentManager
-                students={data.students}
-                sessions={data.sessions}
-                activeCourseId={activeCourse.id}
-                userRole={authSession.role}
-                onUpdateStudents={handleUpdateStudents}
-                onRequestLogin={() => setIsLoginModalOpen(true)}
-              />
-            )}
-
-            {activeTab === 'courses' && (
-              <CourseManager
-                courses={data.courses}
-                activeCourseId={activeCourse.id}
-                sessions={data.sessions}
-                userRole={authSession.role}
-                onSelectCourse={(id) => {
-                  handleSelectCourse(id);
-                  setActiveTab('dashboard');
+        {activeTab === 'dashboard' && (
+          activeCourse ? (
+            <DashboardView
+              course={activeCourse}
+              students={data.students}
+              sessions={data.sessions}
+              userRole={authSession.role}
+              currentStudentNim={authSession.studentNim}
+              onNavigateToSchedule={() => setActiveTab('schedule')}
+              onNavigateToStudents={() => setActiveTab('students')}
+              onToggleSessionStatus={handleToggleSessionStatus}
+              onRequestLogin={() => setIsLoginModalOpen(true)}
+            />
+          ) : (
+            <div className="bg-white rounded-2xl p-10 sm:p-14 text-center border border-slate-200 shadow-2xs max-w-md mx-auto my-10">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-500">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Belum Ada Mata Kuliah</h2>
+              <p className="text-xs text-slate-500 mt-1.5 mb-6">
+                Data mata kuliah saat ini kosong. Tambahkan mata kuliah baru atau pilih dari preset kurikulum otomatis untuk memulai.
+              </p>
+              <button
+                onClick={() => {
+                  if (authSession.role !== 'admin') {
+                    setIsLoginModalOpen(true);
+                  } else {
+                    setActiveTab('courses');
+                  }
                 }}
-                onUpdateCourses={handleUpdateCourses}
-                onDeleteCourse={handleDeleteCourse}
-                onAddCourseWithPreset={handleAddCourseWithPreset}
-                onRequestLogin={() => setIsLoginModalOpen(true)}
-              />
-            )}
-          </>
-        ) : (
-          <div className="bg-white rounded-2xl p-12 text-center border border-slate-200 shadow-xs max-w-md mx-auto my-12">
-            <BookOpen className="w-12 h-12 text-slate-400 mx-auto mb-4" />
-            <h2 className="text-lg font-bold text-slate-800">Belum Ada Mata Kuliah</h2>
-            <p className="text-xs text-slate-500 mt-1 mb-6">
-              Mulai dengan menambahkan mata kuliah pertama untuk mengelola jadwal rotasi PJ.
-            </p>
-            <button
-              onClick={() => {
-                if (authSession.role !== 'admin') {
-                  setIsLoginModalOpen(true);
-                } else {
-                  setActiveTab('courses');
-                }
-              }}
-              className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs"
-            >
-              Tambah Mata Kuliah
-            </button>
-          </div>
+                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer"
+              >
+                + Tambah / Pilih Template Mata Kuliah
+              </button>
+            </div>
+          )
+        )}
+
+        {activeTab === 'schedule' && (
+          activeCourse ? (
+            <ScheduleView
+              course={activeCourse}
+              students={data.students}
+              sessions={data.sessions}
+              userRole={authSession.role}
+              onUpdateSessions={handleUpdateSessions}
+              onRequestLogin={() => setIsLoginModalOpen(true)}
+            />
+          ) : (
+            <div className="bg-white rounded-2xl p-10 sm:p-14 text-center border border-slate-200 shadow-2xs max-w-md mx-auto my-10">
+              <div className="w-12 h-12 rounded-xl bg-slate-100 flex items-center justify-center mx-auto mb-4 text-slate-500">
+                <BookOpen className="w-6 h-6" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900">Pilih Mata Kuliah</h2>
+              <p className="text-xs text-slate-500 mt-1.5 mb-6">
+                Silakan buat atau pilih mata kuliah terlebih dahulu untuk melihat dan mengelola jadwal rotasi perkuliahan.
+              </p>
+              <button
+                onClick={() => setActiveTab('courses')}
+                className="bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs px-4 py-2.5 rounded-xl shadow-xs transition cursor-pointer"
+              >
+                Buka Menu Mata Kuliah &rarr;
+              </button>
+            </div>
+          )
         )}
       </main>
 
