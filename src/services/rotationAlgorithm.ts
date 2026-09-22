@@ -1,0 +1,212 @@
+import type { Student, SessionSchedule, RotationConfig } from '../types';
+
+export interface StudentPjStat {
+  student: Student;
+  totalAssigned: number;
+  completedCount: number;
+  upcomingCount: number;
+  sessionNumbers: number[];
+}
+
+/**
+ * Fisher-Yates Shuffle algorithm for true fair randomization
+ */
+function shuffleArray<T>(array: T[]): T[] {
+  const result = [...array];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+/**
+ * Generates an equitable schedule rotation for the given course and student list
+ */
+export function generateRotationSchedule(
+  courseId: string,
+  students: Student[],
+  totalSessions: number,
+  config: RotationConfig,
+  existingSessions: SessionSchedule[] = []
+): SessionSchedule[] {
+  const activeStudents = students.filter((s) => s.isActive);
+  if (activeStudents.length === 0) {
+    return [];
+  }
+
+  // Determine ordering based on mode
+  let sortedStudents: Student[] = [];
+  if (config.mode === 'fair_random') {
+    sortedStudents = shuffleArray(activeStudents);
+  } else if (config.mode === 'sequential_nim') {
+    sortedStudents = [...activeStudents].sort((a, b) => a.nim.localeCompare(b.nim));
+  } else if (config.mode === 'alphabetical') {
+    sortedStudents = [...activeStudents].sort((a, b) => a.name.localeCompare(b.name));
+  } else {
+    sortedStudents = [...activeStudents];
+  }
+
+  // Calculate dates based on startDate and intervalDays
+  const startDateObj = config.startDate ? new Date(config.startDate) : new Date();
+
+  // Pointer for rotation queue
+  let studentPool = [...sortedStudents];
+  let poolIndex = 0;
+
+  const newSessions: SessionSchedule[] = [];
+
+  for (let sNum = 1; sNum <= totalSessions; sNum++) {
+    // Calculate session date
+    const sessionDate = new Date(startDateObj);
+    sessionDate.setDate(startDateObj.getDate() + (sNum - 1) * (config.intervalDays || 7));
+    const dateStr = sessionDate.toISOString().split('T')[0];
+
+    // Check if session already had custom topic or notes
+    const existing = existingSessions.find((s) => s.sessionNumber === sNum && s.courseId === courseId);
+    let defaultTopic = `Pertemuan ${sNum}`;
+    if (sNum === 8) defaultTopic = 'Ujian Tengah Semester (UTS)';
+    if (sNum === totalSessions) defaultTopic = 'Ujian Akhir Semester (UAS)';
+
+    const topic = existing?.topic || defaultTopic;
+    const notes = existing?.notes || '';
+    const status = existing?.status || 'upcoming';
+
+    // Assign PJs for this session
+    const assignedIds: string[] = [];
+    const count = Math.max(1, config.pjCountPerSession);
+
+    // If session is marked as excluded (e.g. holiday or no PJ required)
+    const isExcluded = config.excludeSessionNumbers?.includes(sNum);
+
+    if (!isExcluded) {
+      for (let p = 0; p < count; p++) {
+        // If we ran out of students in the current pool, re-fill and re-shuffle if random
+        if (poolIndex >= studentPool.length) {
+          studentPool = config.mode === 'fair_random' ? shuffleArray(activeStudents) : [...sortedStudents];
+          poolIndex = 0;
+        }
+
+        // Avoid assigning duplicate student in the exact same session
+        let candidate = studentPool[poolIndex];
+        let searchAttempts = 0;
+        while (assignedIds.includes(candidate.id) && searchAttempts < studentPool.length) {
+          poolIndex = (poolIndex + 1) % studentPool.length;
+          candidate = studentPool[poolIndex];
+          searchAttempts++;
+        }
+
+        assignedIds.push(candidate.id);
+        poolIndex++;
+      }
+    }
+
+    newSessions.push({
+      id: existing?.id || `sess-${courseId}-${sNum}-${Date.now()}`,
+      courseId,
+      sessionNumber: sNum,
+      date: existing?.date || dateStr,
+      topic,
+      assignedPjIds: assignedIds,
+      notes,
+      status,
+    });
+  }
+
+  return newSessions;
+}
+
+/**
+ * Calculates how many times each student has been assigned, completed, etc.
+ */
+export function calculateStudentStats(
+  students: Student[],
+  sessions: SessionSchedule[],
+  courseId?: string
+): StudentPjStat[] {
+  const filteredSessions = courseId ? sessions.filter((s) => s.courseId === courseId) : sessions;
+
+  return students.map((student) => {
+    const studentSessions = filteredSessions.filter((s) => s.assignedPjIds.includes(student.id));
+    const completedCount = studentSessions.filter((s) => s.status === 'completed').length;
+    const upcomingCount = studentSessions.filter((s) => s.status === 'upcoming' || s.status === 'ongoing').length;
+
+    return {
+      student,
+      totalAssigned: studentSessions.length,
+      completedCount,
+      upcomingCount,
+      sessionNumbers: studentSessions.map((s) => s.sessionNumber).sort((a, b) => a - b),
+    };
+  });
+}
+
+/**
+ * Swaps PJ between two sessions
+ */
+export function swapPjBetweenSessions(
+  sessions: SessionSchedule[],
+  sessionAId: string,
+  studentAId: string,
+  sessionBId: string,
+  studentBId: string
+): SessionSchedule[] {
+  return sessions.map((session) => {
+    if (session.id === sessionAId) {
+      const newPjs = session.assignedPjIds.map((id) => (id === studentAId ? studentBId : id));
+      return { ...session, assignedPjIds: newPjs };
+    }
+    if (session.id === sessionBId) {
+      const newPjs = session.assignedPjIds.map((id) => (id === studentBId ? studentAId : id));
+      return { ...session, assignedPjIds: newPjs };
+    }
+    return session;
+  });
+}
+
+/**
+ * Generate formatted WhatsApp broadcast message
+ */
+export function generateWhatsAppMessage(
+  courseName: string,
+  lecturer: string,
+  day: string,
+  time: string,
+  room: string,
+  session: SessionSchedule,
+  assignedStudents: Student[]
+): string {
+  const pjList = assignedStudents.length > 0
+    ? assignedStudents.map((s, idx) => `   ${idx + 1}. *${s.name}* (${s.nim})${s.phone ? ` - ${s.phone}` : ''}`).join('\n')
+    : '   _(Belum ditentukan)_';
+
+  const dateFormatted = new Date(session.date).toLocaleDateString('id-ID', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  });
+
+  return `📢 *PENGINGAT PENANGGUNG JAWAB (PJ) KULIAH* 📢
+
+Halo rekan-rekan kelas, berikut adalah informasi jadwal perkuliahan dan PJ yang bertugas:
+
+📚 *Mata Kuliah:* ${courseName}
+👨‍🏫 *Dosen Pengampu:* ${lecturer}
+🗓️ *Pertemuan Ke:* ${session.sessionNumber}
+📅 *Hari, Tanggal:* ${day}, ${dateFormatted}
+⏰ *Waktu:* ${time} WIB
+📍 *Ruang / Lab:* ${room}
+🎯 *Materi / Topik:* ${session.topic}
+
+👤 *Penanggung Jawab (PJ) Bertugas:*
+${pjList}
+
+${session.notes ? `📝 *Catatan Khusus:* \n${session.notes}\n` : ''}
+⚠️ *Tugas PJ:*
+1. Mengonfirmasi kehadiran Dosen Pengampu minimal H-1 / sebelum jam kuliah.
+2. Membantu persiapan ruang kuliah, proyektor / perangkat lab jika offline, atau link meeting jika online.
+3. Mencatat presensi kehadiran dan membantu mendokumentasikan jalannya perkuliahan.
+
+Terima kasih atas kerja samanya! 🙏✨`;
+}
