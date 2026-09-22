@@ -15,19 +15,29 @@ Siap dideploy langsung ke **Vercel** maupun **Netlify** dengan konfigurasi otoma
 
 ## ✨ Fitur Unggulan
 
-### 1. 🔒 Gated Access & Sistem Kontrol Pengguna Penuh (Tanpa ID Kelas)
-- **Akses Tertutup Total (*Zero Public Leak*)**: Pengunjung yang belum login tidak dapat melihat dashboard, jadwal, maupun data mahasiswa kelas.
-- **Tanpa Kode/ID Kelas**: Pendaftaran dan login murni menggunakan kredensial individual (**Username/NIM** & **Kata Sandi**).
-- **Sistem Persetujuan Admin (*Approval Queue*)**: Pendaftar baru berstatus *Pending* dan tidak dapat masuk sampai disetujui langsung oleh Pemilik Kelas melalui panel admin.
-- **Buka/Tutup Pendaftaran Publik**: Pemilik dapat mematikan form registrasi mandiri agar pihak luar tidak dapat mendaftar.
-- **Auto-Heal & Reset Akses**: Dilengkapi tombol reset darurat di layar login dan parameter `?reset=true` untuk kemudahan pemulihan.
+### 1. 🔒 Gerbang Kunci Akses Tunggal (*Passkey Gate*)
+- **Akses Tertutup Total (*Zero Public Leak*)**: Pengunjung yang belum memasukkan kunci akses tidak dapat melihat dashboard, jadwal, maupun data mahasiswa kelas.
+- **Kunci Akses Tersimpan di LocalStorage**: Pengguna menentukan satu kunci akses rahasia (PIN / Password bebas) yang disimpan di browser tanpa perlu registrasi multi-user yang rumit.
+- **Ingat Perangkat & Kunci Cepat**: Fitur simpan sesi di perangkat pribadi dan tombol kunci instan di navbar.
+- **Pemulihan & Reset Mudah**: Dilengkapi tombol reset darurat di layar gerbang dan parameter URL `?reset=true` untuk kemudahan pemulihan.
 
 ### 2. 📋 Smart SIAKAD Schedule Parser (Import Jadwal Otomatis)
-- Cukup salin teks jadwal mentah dari portal akademik/website kampus (SIAKAD) dan tempel ke sistem:
+- Mendukung salin-tempel langsung dari portal akademik / website kampus (SIAKAD).
+- **Format Struktur yang Didukung**:
   ```text
-  1	IF611347	Data Mining	D	- Senin, 08:50:00 s/d 10:30:00
-  - R2-2 FSI
-  - Yulison Herry Chrisnanto, S.T., M.T.		-
+  [No]	[KODE_MK]	[NAMA_MATA_KULIAH]	[KELAS]	- [HARI], [JAM_MULAI] s/d [JAM_SELESAI]
+  - [KODE_RUANGAN]
+  - [NAMA_DOSEN_PENGAMPU]
+  ```
+- **Contoh Format Pengisian**:
+  ```text
+  1	MK101	Contoh Mata Kuliah 1	A	- Senin, 08:00:00 s/d 10:00:00
+  - Ruang Kuliah 01
+  - Nama Dosen Pengampu, S.Kom., M.T.
+
+  2	MK102	Contoh Mata Kuliah 2	A	- Selasa, 10:00:00 s/d 12:00:00
+  - Lab Komputer 1
+  - Nama Dosen Pengampu 2, M.Kom.
   ```
 - Sistem otomatis mengekstrak:
   - Kode & Nama Mata Kuliah
@@ -37,15 +47,18 @@ Siap dideploy langsung ke **Vercel** maupun **Netlify** dengan konfigurasi otoma
 - **Pembuatan 16 Sesi Otomatis**: Pertemuan dihitung berdasarkan hari kuliah, lengkap dengan penamaan otomatis untuk **Pertemuan 8 (UTS)** dan **Pertemuan 16 (UAS)**.
 
 ### 3. 👥 Smart Student Importer & Deduplikasi Otomatis
-- Menerima format daftar mahasiswa berpembatas pipa (`|`):
+- **Format Struktur yang Didukung**:
   ```text
-  Students
-  2450081111 | SOFYAN HADI SUMARNO
-  2450081112 | RIFKI ANUGRAH PERDANA
+  [NIM] | [NAMA_LENGKAP_MAHASISWA]
   ```
-- Mengabaikan header non-data secara otomatis.
-- **Penyaringan Duplikasi NIM**: Mendeteksi dan menghapus data ganda secara otomatis sehingga daftar rotasi tetap bersih dan adil.
-- **Generate Akun Massal**: Pemilik dapat membuat akun secara massal untuk seluruh mahasiswa di kelas dengan 1 klik (Username = NIM, Kata sandi awal = NIM).
+- **Contoh Format Pengisian**:
+  ```text
+  1234567890 | CONTOH MAHASISWA 1
+  1234567891 | CONTOH MAHASISWA 2
+  1234567892 | CONTOH MAHASISWA 3
+  ```
+- Mengabaikan baris header non-data secara otomatis.
+- **Penyaringan Duplikasi NIM**: Mendeteksi dan membersihkan data ganda secara otomatis sehingga daftar rotasi tetap bersih dan adil.
 
 ### 4. 🎲 Smart Rotation Generator & Penugasan PJ
 - **Fair Rotation Algorithm**: Memastikan setiap mahasiswa bertugas minimal 1x sebelum putaran giliran berikutnya dimulai.

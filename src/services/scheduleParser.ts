@@ -57,8 +57,8 @@ export function parseWebSchedule(rawText: string): ParsedScheduleCourse[] {
     const line = lines[i];
 
     // Detect beginning of a new course entry
-    // Usually starts with index number followed by Course Code e.g. "1\tIF611347" or "1 IF611347"
-    // Or starts directly with a Course Code pattern like IF611347 / WN613353 / CS101
+    // Usually starts with index number followed by Course Code e.g. "1\tMK101" or "1 MK101"
+    // Or starts directly with a Course Code pattern like CS101 / IF101 / MK202
     const startMatch = line.match(/^(\d+[\s\t]+)?([A-Z]{2,5}\d{4,8}|[A-Z]{2,4}[0-9]{3,6})/i);
 
     if (startMatch) {
@@ -71,7 +71,7 @@ export function parseWebSchedule(rawText: string): ParsedScheduleCourse[] {
       lineIndexInBlock = 1;
 
       // Extract details from the first line
-      // Example: "1	IF611347	Data Mining	D	- Senin, 08:50:00 s/d 10:30:00"
+      // Example: "1\tMK101\tNama Mata Kuliah\tA\t- Senin, 08:00:00 s/d 10:00:00"
       const parts = line.split(/\t+|\s{2,}/).map((p) => p.trim()).filter(Boolean);
       
       let code = startMatch[2].toUpperCase();
@@ -151,7 +151,7 @@ export function parseWebSchedule(rawText: string): ParsedScheduleCourse[] {
       }
 
       // Check if this line is Lecturer
-      // e.g. "Yulison Herry Chrisnanto, S.T., M.T.", "Dr., Melina, S.Si., M.Si."
+      // e.g. "Nama Dosen Pengampu, S.Kom., M.T.", "Dr. Nama Dosen, M.Si."
       if (!currentCourse.lecturer) {
         // Clean leading/trailing punctuation
         const lecturerClean = cleanLine.replace(/^Dr\.,\s*/i, 'Dr. ').replace(/,\s*$/, '').trim();
@@ -185,9 +185,10 @@ function finalizeParsedCourse(c: Partial<ParsedScheduleCourse>): ParsedScheduleC
 
 /**
  * Parses student lists from text, supporting pipe delimiter:
+ * Format: [NIM] | [NAMA_MAHASISWA]
  * Example:
- * 2450081111 | SOFYAN HADI SUMARNO
- * 2450081112 | ALSA ILHAMI BINSAR
+ * 1234567890 | CONTOH MAHASISWA 1
+ * 1234567891 | CONTOH MAHASISWA 2
  *
  * Automatically deduplicates entries with the same NIM!
  */
@@ -211,7 +212,7 @@ export function parseStudentList(rawText: string): ParseStudentResult {
     let name = '';
     let phone: string | undefined;
 
-    // Check pipe format: "2450081111 | SOFYAN HADI SUMARNO"
+    // Check pipe format: "[NIM] | [NAMA MAHASISWA]"
     if (line.includes('|')) {
       const parts = line.split('|').map((p) => p.trim());
       // Usually part 0 is NIM, part 1 is Name

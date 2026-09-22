@@ -390,7 +390,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   rows={6}
                   value={bulkText}
                   onChange={(e) => handleParseBulk(e.target.value)}
-                  placeholder={`Contoh format yang didukung langsung:\n2450081111 | SOFYAN HADI SUMARNO\n2450081112 | ALSA ILHAMI BINSAR\n2450081117 | JOLY TIARA NURJANNAH`}
+                  placeholder={`Contoh format yang didukung:\n[NIM] | [NAMA MAHASISWA]\n\nContoh pengisian:\n1234567890 | CONTOH MAHASISWA 1\n1234567891 | CONTOH MAHASISWA 2\n1234567892 | CONTOH MAHASISWA 3`}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>

@@ -392,7 +392,7 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
                   rows={6}
                   value={webImportText}
                   onChange={(e) => handleWebTextChange(e.target.value)}
-                  placeholder={`Contoh format yang didukung langsung:\n1  IF611347  Data Mining  D  - Senin, 08:50:00 s/d 10:30:00\n- R2-2 FSI\n- Yulison Herry Chrisnanto, S.T., M.T.\n\n2  IF611348  Implementasi Perangkat Lunak  D  - Selasa, 10:40:00 s/d 12:15:00\n- R2-4\n- Fatan Kasyidi, S.Kom., M.T.`}
+                  placeholder={`Contoh format yang didukung:\n[No]  [KODE_MK]  [NAMA_MATA_KULIAH]  [KELAS]  - [HARI], [JAM_MULAI] s/d [JAM_SELESAI]\n- [KODE_RUANGAN]\n- [NAMA_DOSEN_PENGAMPU]\n\nContoh pengisian:\n1  MK101  Contoh Mata Kuliah 1  A  - Senin, 08:00:00 s/d 10:00:00\n- Ruang Kuliah 01\n- Nama Dosen Pengampu, S.Kom., M.T.`}
                   className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
                 />
               </div>
