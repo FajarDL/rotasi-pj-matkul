@@ -218,6 +218,31 @@ export function App() {
     showToast(`Masuk sebagai ${session.name || session.username}`);
   };
 
+  const handleLogout = () => {
+    authService.logout();
+    setAuthSession(authService.getSession());
+    showToast('Anda telah keluar dari aplikasi.');
+  };
+
+  // Gated Access: Require login to view or use the application
+  if (!authSession.isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 font-sans text-slate-900">
+        {toastMessage && (
+          <div className="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-lg flex items-center gap-2 text-xs font-semibold animate-in fade-in slide-in-from-bottom-5">
+            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            <span>{toastMessage}</span>
+          </div>
+        )}
+        <LoginModal
+          isOpen={true}
+          isGate={true}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-slate-100/60 flex flex-col font-sans antialiased text-slate-900">
       
@@ -237,12 +262,13 @@ export function App() {
         activeCourseId={activeCourse?.id || null}
         userRole={authSession.role}
         userName={authSession.name || authSession.username || 'Tamu'}
+        pendingCount={authService.getPendingCount()}
         onSelectCourse={handleSelectCourse}
         onBackup={handleBackup}
         onRestore={handleRestore}
         onReset={handleReset}
         onOpenNewCourse={() => {
-          if (authSession.role !== 'admin') {
+          if (authSession.role !== 'admin' && authSession.role !== 'owner') {
             setIsLoginModalOpen(true);
           } else {
             setActiveTab('courses');
@@ -250,6 +276,7 @@ export function App() {
         }}
         onOpenLogin={() => setIsLoginModalOpen(true)}
         onOpenSecurity={() => setIsSecurityModalOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -370,6 +397,7 @@ export function App() {
       <SecuritySettingsModal
         isOpen={isSecurityModalOpen}
         onClose={() => setIsSecurityModalOpen(false)}
+        students={data.students}
         onSuccess={(msg) => showToast(msg)}
       />
 
@@ -384,7 +412,7 @@ export function App() {
 
           <div className="flex items-center gap-3">
             <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
-              Peran Aktif: {authSession.role === 'admin' ? 'Administrator' : 'Mahasiswa (View-Only)'}
+              Peran Aktif: {authSession.role === 'owner' ? 'Pemilik Utama' : authSession.role === 'admin' ? 'Administrator' : 'Mahasiswa'}
             </span>
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

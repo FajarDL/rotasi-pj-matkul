@@ -1,4 +1,5 @@
 export type UserRole = 'owner' | 'admin' | 'student';
+export type UserStatus = 'active' | 'pending' | 'rejected';
 
 export interface UserAccount {
   id: string;
@@ -6,13 +7,15 @@ export interface UserAccount {
   name: string;
   password: string; // password
   role: UserRole;
+  status: UserStatus;
   createdAt: string;
 }
 
 export interface SecurityConfig {
   isInitialized: boolean;
-  classAccessCode: string; // Secret code set by owner for new members
   ownerUsername: string;
+  allowPublicRegistration: boolean;
+  classAccessCode?: string;
 }
 
 export interface AuthSession {
