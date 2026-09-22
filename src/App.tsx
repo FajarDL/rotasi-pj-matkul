@@ -83,6 +83,70 @@ export function App() {
     showToast(`Mata kuliah ${newCourse.name} & 16 silabus berhasil dibuat otomatis!`);
   };
 
+  // Helper to get next date matching day name
+  const getNextDateForDay = (dayName: string): Date => {
+    const dayMap: Record<string, number> = {
+      minggu: 0,
+      senin: 1,
+      selasa: 2,
+      rabu: 3,
+      kamis: 4,
+      jumat: 5,
+      sabtu: 6,
+    };
+    const targetDay = dayMap[dayName.trim().toLowerCase()] ?? 1;
+    const now = new Date();
+    const currentDay = now.getDay();
+    let diff = targetDay - currentDay;
+    if (diff < 0) diff += 7;
+    const result = new Date(now);
+    result.setDate(now.getDate() + diff);
+    return result;
+  };
+
+  // Batch import courses from SIAKAD parser
+  const handleBatchImportCourses = (newCourses: Omit<Course, 'id'>[]) => {
+    const timestamp = Date.now();
+    const createdCourses: Course[] = [];
+    const allSessions: SessionSchedule[] = [];
+
+    newCourses.forEach((c, cIdx) => {
+      const courseId = `course-${timestamp}-${cIdx}`;
+      const course: Course = { ...c, id: courseId };
+      createdCourses.push(course);
+
+      const firstSessionDate = getNextDateForDay(course.day);
+
+      for (let i = 1; i <= course.totalSessions; i++) {
+        const sDate = new Date(firstSessionDate);
+        sDate.setDate(firstSessionDate.getDate() + (i - 1) * 7);
+
+        let topic = `Pertemuan ${i} - ${course.name}`;
+        if (i === 8) topic = `Ujian Tengah Semester (UTS) - ${course.name}`;
+        if (i === 16) topic = `Ujian Akhir Semester (UAS) - ${course.name}`;
+
+        allSessions.push({
+          id: `sess-${courseId}-${i}-${timestamp}`,
+          courseId,
+          sessionNumber: i,
+          date: sDate.toISOString().split('T')[0],
+          topic,
+          assignedPjIds: [],
+          status: 'upcoming',
+        });
+      }
+    });
+
+    setData((prev) => ({
+      ...prev,
+      courses: [...prev.courses, ...createdCourses],
+      sessions: [...prev.sessions, ...allSessions],
+      activeCourseId: prev.activeCourseId || createdCourses[0]?.id || null,
+    }));
+
+    showToast(`Berhasil mengimpor ${createdCourses.length} mata kuliah & sesi pertemuan otomatis!`);
+  };
+
   const handleDeleteCourse = (courseId: string) => {
     setData((prev) => {
       const remainingCourses = prev.courses.filter((c) => c.id !== courseId);
@@ -214,6 +278,7 @@ export function App() {
             onUpdateCourses={handleUpdateCourses}
             onDeleteCourse={handleDeleteCourse}
             onAddCourseWithPreset={handleAddCourseWithPreset}
+            onBatchImportCourses={handleBatchImportCourses}
             onRequestLogin={() => setIsLoginModalOpen(true)}
           />
         )}

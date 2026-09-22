@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Student, SessionSchedule, UserRole } from '../types';
 import { calculateStudentStats } from '../services/rotationAlgorithm';
+import { parseStudentList } from '../services/scheduleParser';
 import { 
   UserPlus, 
   Search, 
@@ -45,6 +46,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   // Bulk paste text
   const [bulkText, setBulkText] = useState('');
   const [bulkPreview, setBulkPreview] = useState<Omit<Student, 'id' | 'isActive'>[]>([]);
+  const [duplicateCount, setDuplicateCount] = useState(0);
 
   // Calculate statistics per student
   const stats = calculateStudentStats(students, sessions, activeCourseId || undefined);
@@ -103,41 +105,12 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
     }
   };
 
-  // Parse bulk text from WhatsApp/Excel
+  // Parse bulk text from WhatsApp/Excel/Pipe
   const handleParseBulk = (text: string) => {
     setBulkText(text);
-    const lines = text.split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
-    const parsed: Omit<Student, 'id' | 'isActive'>[] = [];
-
-    for (const line of lines) {
-      let clean = line.replace(/^\s*\[?\d+\]?[\.\-\)\s]+/, '').trim();
-
-      let phone: string | undefined;
-      const phoneMatch = clean.match(/(\+62|08)[0-9\-\s]{8,15}/);
-      if (phoneMatch) {
-        phone = phoneMatch[0].replace(/[\-\s]/g, '');
-        clean = clean.replace(phoneMatch[0], '').trim();
-      }
-
-      let nim = '';
-      const nimMatch = clean.match(/\b\d{6,14}\b/);
-      if (nimMatch) {
-        nim = nimMatch[0];
-        clean = clean.replace(nimMatch[0], '').trim();
-      }
-
-      clean = clean.replace(/^[\-\|\,\s]+|[\-\|\,\s]+$/g, '').trim();
-
-      if (clean || nim) {
-        parsed.push({
-          nim: nim || `MHS-${Math.floor(1000 + Math.random() * 9000)}`,
-          name: clean || `Mahasiswa ${parsed.length + 1}`,
-          phone,
-        });
-      }
-    }
-
-    setBulkPreview(parsed);
+    const result = parseStudentList(text);
+    setBulkPreview(result.students);
+    setDuplicateCount(result.duplicateCount);
   };
 
   // Confirm bulk import
@@ -417,16 +390,23 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
                   rows={6}
                   value={bulkText}
                   onChange={(e) => handleParseBulk(e.target.value)}
-                  placeholder={`Contoh format (sistem mendeteksi secara fleksibel):\n1. 220101001 Ahmad Fauzi 081234567801\n220101002 - Anisa Rahmawati\nBagus Pratama \t 220101003`}
+                  placeholder={`Contoh format yang didukung langsung:\n2450081111 | SOFYAN HADI SUMARNO\n2450081112 | ALSA ILHAMI BINSAR\n2450081117 | JOLY TIARA NURJANNAH`}
                   className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-slate-900"
                 />
               </div>
 
               {bulkPreview.length > 0 && (
                 <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
-                  <span className="text-xs font-bold text-slate-800 mb-2 block">
-                    Hasil Deteksi ({bulkPreview.length} Mahasiswa Teridentifikasi):
-                  </span>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-800">
+                      Hasil Deteksi ({bulkPreview.length} Mahasiswa Unik Teridentifikasi):
+                    </span>
+                    {duplicateCount > 0 && (
+                      <span className="text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-200 px-2 py-0.5 rounded">
+                        {duplicateCount} Duplikat NIM Dibersihkan
+                      </span>
+                    )}
+                  </div>
                   <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 bg-white rounded-lg border border-slate-200 text-xs">
                     {bulkPreview.map((item, i) => (
                       <div key={i} className="p-2 flex items-center justify-between">

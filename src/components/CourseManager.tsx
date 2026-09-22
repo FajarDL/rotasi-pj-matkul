@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Course, SessionSchedule, UserRole } from '../types';
 import { COURSE_PRESETS, MASTER_LECTURERS, MASTER_ROOMS } from '../data/academicPresets';
+import { parseWebSchedule, type ParsedScheduleCourse } from '../services/scheduleParser';
 import { 
   Plus, 
   Trash2, 
@@ -11,7 +12,9 @@ import {
   CheckCircle, 
   X,
   Wand2,
-  Lock
+  Lock,
+  Globe,
+  FileSpreadsheet
 } from 'lucide-react';
 
 interface CourseManagerProps {
@@ -23,6 +26,7 @@ interface CourseManagerProps {
   onUpdateCourses: (courses: Course[]) => void;
   onDeleteCourse: (courseId: string) => void;
   onAddCourseWithPreset?: (newCourse: Course, topics: string[]) => void;
+  onBatchImportCourses?: (courses: Omit<Course, 'id'>[]) => void;
   onRequestLogin?: () => void;
 }
 
@@ -35,12 +39,18 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
   onUpdateCourses,
   onDeleteCourse,
   onAddCourseWithPreset,
+  onBatchImportCourses,
   onRequestLogin,
 }) => {
   const isAdmin = userRole === 'owner' || userRole === 'admin';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedPresetIndex, setSelectedPresetIndex] = useState<string>('');
+
+  // Web Import State
+  const [isWebImportModalOpen, setIsWebImportModalOpen] = useState(false);
+  const [webImportText, setWebImportText] = useState('');
+  const [parsedPreview, setParsedPreview] = useState<ParsedScheduleCourse[]>([]);
 
   const [formData, setFormData] = useState<Omit<Course, 'id'>>({
     code: '',
@@ -130,7 +140,6 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
         ...formData,
       };
 
-      // If preset was selected and handler exists, populate syllabus automatically
       if (selectedPresetIndex !== '' && onAddCourseWithPreset) {
         const preset = COURSE_PRESETS[Number(selectedPresetIndex)];
         onAddCourseWithPreset(newCourse, preset?.topics || []);
@@ -144,6 +153,47 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
     }
 
     setIsModalOpen(false);
+  };
+
+  // Handle live parsing when text is pasted
+  const handleWebTextChange = (text: string) => {
+    setWebImportText(text);
+    const parsed = parseWebSchedule(text);
+    setParsedPreview(parsed);
+  };
+
+  // Submit batch import
+  const handleConfirmWebImport = () => {
+    if (parsedPreview.length === 0) return;
+
+    const formattedCourses: Omit<Course, 'id'>[] = parsedPreview.map((item) => ({
+      code: item.code,
+      name: item.name,
+      lecturer: item.lecturer,
+      day: item.day,
+      startTime: item.startTime,
+      endTime: item.endTime,
+      room: item.room,
+      totalSessions: 16,
+      color: 'indigo',
+    }));
+
+    if (onBatchImportCourses) {
+      onBatchImportCourses(formattedCourses);
+    } else {
+      const newCreated: Course[] = formattedCourses.map((fc, idx) => ({
+        id: `course-${Date.now()}-${idx}`,
+        ...fc,
+      }));
+      onUpdateCourses([...courses, ...newCreated]);
+      if (!activeCourseId && newCreated.length > 0) {
+        onSelectCourse(newCreated[0].id);
+      }
+    }
+
+    setWebImportText('');
+    setParsedPreview([]);
+    setIsWebImportModalOpen(false);
   };
 
   return (
@@ -165,13 +215,28 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
 
         <div className="flex items-center gap-2">
           {isAdmin ? (
-            <button
-              onClick={openAddModal}
-              className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl shadow-xs transition cursor-pointer"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Tambah Mata Kuliah</span>
-            </button>
+            <>
+              <button
+                onClick={() => {
+                  setWebImportText('');
+                  setParsedPreview([]);
+                  setIsWebImportModalOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl border border-slate-200 transition cursor-pointer"
+                title="Tempel jadwal dari portal SIAKAD atau website kampus"
+              >
+                <Globe className="w-4 h-4 text-indigo-600" />
+                <span>Import Jadwal SIAKAD</span>
+              </button>
+
+              <button
+                onClick={openAddModal}
+                className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs sm:text-sm px-3.5 py-2 rounded-xl shadow-xs transition cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Tambah Manual</span>
+              </button>
+            </>
           ) : (
             <div className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-500 text-xs px-3 py-1.5 rounded-lg border border-slate-200">
               <Lock className="w-3.5 h-3.5" />
@@ -220,19 +285,17 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
-                      {courses.length > 1 && (
-                        <button
-                          onClick={() => {
-                            if (confirm(`Hapus mata kuliah "${course.name}"? Jadwal terkait juga akan dihapus.`)) {
-                              onDeleteCourse(course.id);
-                            }
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
-                          title="Hapus Mata Kuliah"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      )}
+                      <button
+                        onClick={() => {
+                          if (confirm(`Hapus mata kuliah "${course.name}"? Seluruh sesi terkait akan dihapus.`)) {
+                            onDeleteCourse(course.id);
+                          }
+                        }}
+                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition"
+                        title="Hapus Mata Kuliah"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -297,7 +360,108 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
         })}
       </div>
 
-      {/* MODAL: Tambah / Edit Mata Kuliah with AUTOFILL */}
+      {/* MODAL: Import Jadwal SIAKAD / Web Portal */}
+      {isWebImportModalOpen && isAdmin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs no-print">
+          <div className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 max-h-[92vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center">
+                  <Globe className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">
+                    Import Jadwal Kuliah dari Website / SIAKAD
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Salin (copy) tabel jadwal dari website kampus dan tempel langsung ke kotak di bawah ini
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsWebImportModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 flex-1 overflow-y-auto pr-1">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase mb-1">
+                  Tempel (Paste) Teks Jadwal dari Website Kampus:
+                </label>
+                <textarea
+                  rows={6}
+                  value={webImportText}
+                  onChange={(e) => handleWebTextChange(e.target.value)}
+                  placeholder={`Contoh format yang didukung langsung:\n1  IF611347  Data Mining  D  - Senin, 08:50:00 s/d 10:30:00\n- R2-2 FSI\n- Yulison Herry Chrisnanto, S.T., M.T.\n\n2  IF611348  Implementasi Perangkat Lunak  D  - Selasa, 10:40:00 s/d 12:15:00\n- R2-4\n- Fatan Kasyidi, S.Kom., M.T.`}
+                  className="w-full p-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-mono focus:ring-2 focus:ring-slate-900 focus:outline-none"
+                />
+              </div>
+
+              {/* Parsed Live Preview Table */}
+              {parsedPreview.length > 0 && (
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-200">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <FileSpreadsheet className="w-4 h-4 text-emerald-600" />
+                      <span>Hasil Ekstraksi ({parsedPreview.length} Mata Kuliah Terdeteksi):</span>
+                    </span>
+                  </div>
+
+                  <div className="overflow-x-auto max-h-56 divide-y divide-slate-100 bg-white rounded-lg border border-slate-200 text-xs">
+                    <table className="w-full text-left border-collapse">
+                      <thead className="bg-slate-100/75 text-slate-700 font-bold text-[11px] uppercase">
+                        <tr>
+                          <th className="p-2 w-10 text-center">No</th>
+                          <th className="p-2 w-24">Kode</th>
+                          <th className="p-2">Nama Mata Kuliah</th>
+                          <th className="p-2 w-32">Hari & Jam</th>
+                          <th className="p-2 w-28">Ruangan</th>
+                          <th className="p-2">Dosen Pengampu</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100">
+                        {parsedPreview.map((item, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            <td className="p-2 text-center text-slate-400 font-mono">{idx + 1}</td>
+                            <td className="p-2 font-mono font-bold text-slate-800">{item.code}</td>
+                            <td className="p-2 font-semibold text-slate-900">{item.name}</td>
+                            <td className="p-2 whitespace-nowrap text-slate-700">
+                              <div>{item.day}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">{item.startTime} - {item.endTime}</div>
+                            </td>
+                            <td className="p-2 text-slate-600 truncate max-w-[120px]">{item.room}</td>
+                            <td className="p-2 text-slate-800">{item.lecturer}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsWebImportModalOpen(false)}
+                className="px-4 py-2 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmWebImport}
+                disabled={parsedPreview.length === 0}
+                className="px-4 py-2 text-xs font-bold bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white rounded-lg shadow-sm cursor-pointer"
+              >
+                Simpan & Tambahkan {parsedPreview.length} Mata Kuliah
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: Tambah / Edit Mata Kuliah Manual with AUTOFILL */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 animate-in fade-in zoom-in-95 max-h-[92vh] overflow-y-auto">
@@ -313,7 +477,6 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
               </button>
             </div>
 
-            {/* Smart Preset Autofill Banner */}
             {!editingCourse && (
               <div className="bg-indigo-50/70 border border-indigo-200/80 p-3.5 rounded-xl space-y-2">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-950">
@@ -368,7 +531,6 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
                 </div>
               </div>
 
-              {/* Lecturer with quick master autofill */}
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <label className="block text-xs font-bold text-slate-700 uppercase">
