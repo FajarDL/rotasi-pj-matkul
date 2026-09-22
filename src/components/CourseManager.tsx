@@ -37,7 +37,7 @@ export const CourseManager: React.FC<CourseManagerProps> = ({
   onAddCourseWithPreset,
   onRequestLogin,
 }) => {
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
   const [selectedPresetIndex, setSelectedPresetIndex] = useState<string>('');

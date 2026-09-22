@@ -48,7 +48,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const activeCourse = courses.find((c) => c.id === activeCourseId);
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

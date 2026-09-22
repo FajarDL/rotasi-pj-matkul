@@ -37,7 +37,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onToggleSessionStatus,
   onRequestLogin,
 }) => {
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
   const [copiedSessionId, setCopiedSessionId] = useState<string | null>(null);
   const [personalSearchNim, setPersonalSearchNim] = useState<string>(currentStudentNim || '');
 

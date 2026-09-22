@@ -1,9 +1,27 @@
-export type UserRole = 'admin' | 'student';
+export type UserRole = 'owner' | 'admin' | 'student';
+
+export interface UserAccount {
+  id: string;
+  username: string; // NIM or custom username
+  name: string;
+  password: string; // password
+  role: UserRole;
+  createdAt: string;
+}
+
+export interface SecurityConfig {
+  isInitialized: boolean;
+  classAccessCode: string; // Secret code set by owner for new members
+  ownerUsername: string;
+}
 
 export interface AuthSession {
   isAuthenticated: boolean;
+  userId?: string;
   role: UserRole;
-  userName: string;
+  username: string;
+  name: string;
+  userName?: string;
   studentNim?: string;
 }
 
@@ -68,5 +86,4 @@ export interface AppState {
   students: Student[];
   sessions: SessionSchedule[];
   activeCourseId: string | null;
-  adminPin?: string; // default hashed or stored PIN
 }

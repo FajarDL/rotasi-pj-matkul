@@ -151,7 +151,7 @@ export function App() {
 
   const handleLoginSuccess = (session: AuthSession) => {
     setAuthSession(session);
-    showToast(`Masuk sebagai ${session.userName}`);
+    showToast(`Masuk sebagai ${session.name || session.username}`);
   };
 
   return (
@@ -172,7 +172,7 @@ export function App() {
         courses={data.courses}
         activeCourseId={activeCourse?.id || null}
         userRole={authSession.role}
-        userName={authSession.userName}
+        userName={authSession.name || authSession.username || 'Tamu'}
         onSelectCourse={handleSelectCourse}
         onBackup={handleBackup}
         onRestore={handleRestore}
@@ -299,7 +299,6 @@ export function App() {
       <LoginModal
         isOpen={isLoginModalOpen}
         onClose={() => setIsLoginModalOpen(false)}
-        students={data.students}
         onLoginSuccess={handleLoginSuccess}
       />
 

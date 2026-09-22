@@ -29,7 +29,7 @@ export const StudentManager: React.FC<StudentManagerProps> = ({
   onUpdateStudents,
   onRequestLogin,
 }) => {
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);

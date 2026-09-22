@@ -36,7 +36,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   onUpdateSessions,
   onRequestLogin,
 }) => {
-  const isAdmin = userRole === 'admin';
+  const isAdmin = userRole === 'owner' || userRole === 'admin';
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | SessionStatus>('all');
   
