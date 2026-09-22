@@ -21,6 +21,25 @@ export function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'schedule' | 'students' | 'courses'>('dashboard');
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
+  // Handle URL reset flags (e.g. ?reset=true or ?reset=auth)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('reset') === 'all') {
+        storageService.clearAllData();
+        authService.resetAllAuthAndSecurity();
+        window.history.replaceState({}, document.title, window.location.pathname);
+        window.location.reload();
+      } else if (params.get('reset') === 'true' || params.get('reset') === 'auth') {
+        authService.resetAllAuthAndSecurity();
+        window.history.replaceState({}, document.title, window.location.pathname);
+        window.location.reload();
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
   // Auto-save to localStorage whenever data changes
   useEffect(() => {
     storageService.saveData(data);

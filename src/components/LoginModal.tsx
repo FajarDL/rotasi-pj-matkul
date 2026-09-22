@@ -12,7 +12,8 @@ import {
   LogIn, 
   Clock,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  RotateCcw
 } from 'lucide-react';
 
 interface LoginModalProps {
@@ -99,6 +100,36 @@ export const LoginModal: React.FC<LoginModalProps> = ({
       setPassword('');
     } else {
       setErrorMessage(res.message);
+    }
+  };
+
+  // Handle Reset Admin Account & Security
+  const handleResetAdminAccount = () => {
+    if (
+      confirm(
+        'Lupa akses atau ingin mereset akun pengelola?\n\nSemua data akun lama akan dihapus dan Anda akan langsung diarahkan ke form Setup Pemilik Baru untuk membuat username dan password baru.\n\n(Catatan: Data jadwal matkul dan mahasiswa tetap aman tersimpan).'
+      )
+    ) {
+      authService.resetAllAuthAndSecurity();
+      setMode('setup');
+      setErrorMessage('');
+      setName('');
+      setUsername('');
+      setPassword('');
+      setPendingSuccessMsg('');
+    }
+  };
+
+  // Handle Total App Reset
+  const handleTotalReset = () => {
+    if (
+      confirm(
+        'PERINGATAN: Apakah Anda yakin ingin mereset TOTAL seluruh data aplikasi (mata kuliah, jadwal, mahasiswa, dan akun)?\n\nAplikasi akan kembali ke kondisi kosong awal.'
+      )
+    ) {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.reload();
     }
   };
 
@@ -333,6 +364,25 @@ export const LoginModal: React.FC<LoginModalProps> = ({
                     Pendaftaran publik ditutup. Hubungi Pengelola Kelas untuk mendapatkan akun.
                   </p>
                 )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-100 flex flex-col items-center gap-1.5 text-center">
+                <button
+                  type="button"
+                  onClick={handleResetAdminAccount}
+                  className="text-xs text-rose-600 hover:text-rose-700 hover:underline font-semibold inline-flex items-center gap-1 cursor-pointer"
+                  title="Klik untuk menghapus akun lama dan membuat akun admin baru"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset Akun Pengelola & Setup Baru</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleTotalReset}
+                  className="text-[10px] text-slate-400 hover:text-rose-600 underline cursor-pointer"
+                >
+                  Atau reset total seluruh data aplikasi
+                </button>
               </div>
             </form>
           )}

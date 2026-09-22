@@ -5,10 +5,12 @@ const SECURITY_KEY = 'ROTASI_PJ_SECURITY_CONFIG_V2';
 const SESSION_KEY = 'ROTASI_PJ_AUTH_SESSION_V2';
 
 export const authService = {
-  // Check if system has been initialized by an owner
+  // Check if system has been initialized by an active owner
   isInitialized(): boolean {
     const config = this.getSecurityConfig();
-    return !!config?.isInitialized;
+    const users = this.getUsers();
+    const hasOwner = users.some((u) => u.role === 'owner' && u.status === 'active');
+    return !!config?.isInitialized && hasOwner;
   },
 
   getSecurityConfig(): SecurityConfig | null {
@@ -59,9 +61,10 @@ export const authService = {
       return { success: false, message: 'Semua kolom wajib diisi.' };
     }
 
+    const cleanUsername = data.username.trim().toLowerCase();
     const ownerUser: UserAccount = {
       id: `usr-${Date.now()}`,
-      username: data.username.trim().toLowerCase(),
+      username: cleanUsername,
       name: data.name.trim(),
       password: data.password.trim(),
       role: 'owner',
@@ -76,6 +79,7 @@ export const authService = {
     };
 
     this.saveSecurityConfig(config);
+    // Replace users list with the new owner as the primary user
     this.saveUsers([ownerUser]);
 
     const session: AuthSession = {
@@ -96,22 +100,19 @@ export const authService = {
     username: string;
     password: string;
     role?: UserRole;
-  }): { success: boolean; message: string; isPending?: boolean } {
+  }): { success: boolean; message: string; isPending?: boolean; session?: AuthSession } {
     const config = this.getSecurityConfig();
+    const cleanUsername = data.username.trim().toLowerCase();
+    const users = this.getUsers();
+    const hasOwner = users.some((u) => u.role === 'owner' && u.status === 'active');
+    const isFirstUser = users.length === 0 || !hasOwner;
 
-    if (!config?.isInitialized) {
-      return { success: false, message: 'Sistem belum diinisialisasi oleh pemilik.' };
-    }
-
-    if (!config.allowPublicRegistration) {
+    if (!isFirstUser && !config?.allowPublicRegistration) {
       return {
         success: false,
         message: 'Pendaftaran mandiri sedang dinonaktifkan oleh pemilik. Silakan hubungi admin kelas untuk mendapatkan akun.',
       };
     }
-
-    const cleanUsername = data.username.trim().toLowerCase();
-    const users = this.getUsers();
 
     if (users.some((u) => u.username === cleanUsername)) {
       return { success: false, message: 'Username atau NIM sudah terdaftar.' };
@@ -121,18 +122,44 @@ export const authService = {
       return { success: false, message: 'Kata sandi minimal 4 karakter.' };
     }
 
+    // If no owner exists in the system, automatically assign this registration as active owner!
     const newUser: UserAccount = {
       id: `usr-${Date.now()}`,
       username: cleanUsername,
       name: data.name.trim(),
       password: data.password.trim(),
-      role: data.role || 'student',
-      status: 'pending', // Requires approval
+      role: isFirstUser ? 'owner' : (data.role || 'student'),
+      status: isFirstUser ? 'active' : 'pending',
       createdAt: new Date().toISOString(),
     };
 
     users.push(newUser);
     this.saveUsers(users);
+
+    if (isFirstUser) {
+      const newConfig: SecurityConfig = {
+        isInitialized: true,
+        ownerUsername: newUser.username,
+        allowPublicRegistration: true,
+      };
+      this.saveSecurityConfig(newConfig);
+
+      const session: AuthSession = {
+        isAuthenticated: true,
+        userId: newUser.id,
+        role: 'owner',
+        username: newUser.username,
+        name: newUser.name,
+      };
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
+
+      return {
+        success: true,
+        isPending: false,
+        message: 'Akun Pemilik Utama berhasil didaftarkan dan langsung aktif!',
+        session,
+      };
+    }
 
     return {
       success: true,
@@ -151,7 +178,7 @@ export const authService = {
 
     // Check against Master Key in environment variable if configured
     const envMasterKey = import.meta.env.VITE_MASTER_KEY;
-    if (envMasterKey && cleanPassword === envMasterKey) {
+    if (envMasterKey && (cleanPassword === envMasterKey || password === envMasterKey)) {
       const session: AuthSession = {
         isAuthenticated: true,
         role: 'owner',
@@ -163,14 +190,31 @@ export const authService = {
     }
 
     const users = this.getUsers();
-    const user = users.find((u) => u.username === cleanUsername);
+    const user = users.find((u) => u.username.toLowerCase() === cleanUsername);
 
     if (!user) {
       return { success: false, message: 'Username atau NIM tidak ditemukan.' };
     }
 
-    if (user.password !== cleanPassword) {
+    if (user.password !== password && user.password.trim() !== cleanPassword) {
       return { success: false, message: 'Kata sandi yang Anda masukkan salah.' };
+    }
+
+    // Auto-heal: If no active owner exists in the system or this user is marked owner, ensure status is active!
+    const hasOwner = users.some((u) => u.role === 'owner' && u.status === 'active');
+    if (!hasOwner || user.role === 'owner') {
+      user.role = 'owner';
+      user.status = 'active';
+      this.saveUsers(users);
+
+      const config = this.getSecurityConfig() || {
+        isInitialized: true,
+        ownerUsername: user.username,
+        allowPublicRegistration: true,
+      };
+      config.isInitialized = true;
+      config.ownerUsername = user.username;
+      this.saveSecurityConfig(config);
     }
 
     if (user.status === 'pending') {
@@ -223,6 +267,19 @@ export const authService = {
 
   getSession(): AuthSession {
     return this.getCurrentSession();
+  },
+
+  // Reset all auth, security config, and user accounts
+  resetAllAuthAndSecurity(): void {
+    localStorage.removeItem(USERS_KEY);
+    localStorage.removeItem(SECURITY_KEY);
+    sessionStorage.removeItem(SESSION_KEY);
+    localStorage.removeItem('ROTASI_PJ_USERS_DATA');
+    localStorage.removeItem('ROTASI_PJ_SECURITY_CONFIG');
+    localStorage.removeItem('ROTASI_PJ_AUTH_SESSION');
+    localStorage.removeItem('ROTASI_PJ_USERS_DATA_V1');
+    localStorage.removeItem('ROTASI_PJ_SECURITY_CONFIG_V1');
+    localStorage.removeItem('ROTASI_PJ_AUTH_SESSION_V1');
   },
 
   // Approve a pending user
