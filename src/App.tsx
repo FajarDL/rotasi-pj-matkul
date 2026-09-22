@@ -234,13 +234,13 @@ export function App() {
 
   const handleLoginSuccess = (session: AuthSession) => {
     setAuthSession(session);
-    showToast(`Masuk sebagai ${session.name || session.username}`);
+    showToast('Kunci akses terverifikasi! Halaman utama terbuka.');
   };
 
   const handleLogout = () => {
-    authService.logout();
+    authService.lock();
     setAuthSession(authService.getSession());
-    showToast('Anda telah keluar dari aplikasi.');
+    showToast('Aplikasi telah dikunci.');
   };
 
   // Gated Access: Require login to view or use the application
@@ -416,7 +416,6 @@ export function App() {
       <SecuritySettingsModal
         isOpen={isSecurityModalOpen}
         onClose={() => setIsSecurityModalOpen(false)}
-        students={data.students}
         onSuccess={(msg) => showToast(msg)}
       />
 
@@ -431,7 +430,7 @@ export function App() {
 
           <div className="flex items-center gap-3">
             <span className="font-mono text-[11px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded border border-slate-200">
-              Peran Aktif: {authSession.role === 'owner' ? 'Pemilik Utama' : authSession.role === 'admin' ? 'Administrator' : 'Mahasiswa'}
+              Status: Akses Penuh (Kunci Terverifikasi)
             </span>
             <button
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}

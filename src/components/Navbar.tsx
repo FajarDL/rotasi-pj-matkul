@@ -8,12 +8,10 @@ import {
   Download, 
   Upload, 
   RotateCcw, 
-  ShieldCheck, 
-  UserCheck, 
   ChevronDown, 
   GraduationCap,
-  Shield,
-  LogOut
+  Lock,
+  KeyRound
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -40,14 +38,14 @@ export const Navbar: React.FC<NavbarProps> = ({
   courses,
   activeCourseId,
   userRole,
-  userName,
-  pendingCount = 0,
+  userName: _userName,
+  pendingCount: _pendingCount = 0,
   onSelectCourse,
   onBackup,
   onRestore,
   onReset,
   onOpenNewCourse,
-  onOpenLogin,
+  onOpenLogin: _onOpenLogin,
   onOpenSecurity,
   onLogout,
 }) => {
@@ -114,39 +112,25 @@ export const Navbar: React.FC<NavbarProps> = ({
               <ChevronDown className="w-4 h-4 text-slate-500 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
 
-            {/* Auth / Role Badge */}
+            {/* Kunci Akses Settings */}
             <button
-              onClick={onOpenLogin}
-              title="Profil Pengguna Aktif"
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition cursor-pointer ${
-                isAdmin
-                  ? 'bg-indigo-50 border-indigo-200 text-indigo-800 hover:bg-indigo-100'
-                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
-              }`}
+              onClick={onOpenSecurity}
+              title="Pengaturan Kunci Akses Aplikasi"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold border border-slate-200 transition cursor-pointer"
             >
-              {isAdmin ? (
-                <ShieldCheck className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-              ) : (
-                <UserCheck className="w-3.5 h-3.5 text-slate-600 shrink-0" />
-              )}
-              <span className="max-w-[100px] truncate hidden md:inline">{userName}</span>
-              <span className="md:hidden">{isAdmin ? 'Admin' : 'Mhs'}</span>
+              <KeyRound className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+              <span className="hidden sm:inline">Kunci Akses</span>
             </button>
 
-            {/* Admin: User & Access Management Button with Pending Badge */}
-            {isAdmin && (
+            {/* Lock Application Button */}
+            {onLogout && (
               <button
-                onClick={onOpenSecurity}
-                title="Kelola Akun & Persetujuan Pendaftar"
-                className="relative inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-xs font-semibold border border-slate-200 transition cursor-pointer"
+                onClick={onLogout}
+                title="Kunci Aplikasi Sekarang"
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-semibold shadow-2xs transition cursor-pointer"
               >
-                <Shield className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span className="hidden sm:inline">Akses & Akun</span>
-                {pendingCount > 0 && (
-                  <span className="bg-rose-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-bold animate-pulse">
-                    {pendingCount}
-                  </span>
-                )}
+                <Lock className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">Kunci</span>
               </button>
             )}
 
@@ -182,17 +166,6 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <RotateCcw className="w-3.5 h-3.5" />
                 </button>
               </div>
-            )}
-
-            {/* Logout Button */}
-            {onLogout && (
-              <button
-                onClick={onLogout}
-                title="Keluar (Logout)"
-                className="p-2 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg border border-transparent hover:border-rose-200 transition cursor-pointer"
-              >
-                <LogOut className="w-4 h-4" />
-              </button>
             )}
 
           </div>

@@ -20,6 +20,7 @@ export interface SecurityConfig {
 
 export interface AuthSession {
   isAuthenticated: boolean;
+  isUnlocked?: boolean;
   userId?: string;
   role: UserRole;
   username: string;
