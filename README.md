@@ -1,52 +1,72 @@
 # SI-ROTASI - Sistem Informasi Rotasi Penanggung Jawab Perkuliahan 🎓
 
-Aplikasi web manajemen perkuliahan profesional untuk mengelola, mengacak, dan menjadwalkan rotasi Penanggung Jawab (PJ) mata kuliah secara adil, akurat, dan terstruktur. Dirancang khusus untuk kebutuhan akademik mahasiswa, ketua tingkat (komti), dosen pengampu, dan koordinator perkuliahan perguruan tinggi.
+[![CI](https://github.com/FajarDL/rotasi-pj-matkul/actions/workflows/ci.yml/badge.svg)](https://github.com/FajarDL/rotasi-pj-matkul/actions/workflows/ci.yml)
+![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=black)
+![TypeScript](https://img.shields.io/badge/TypeScript-6.0-3178C6?logo=typescript&logoColor=white)
+![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-v4-38B2AC?logo=tailwind-css&logoColor=white)
+![Vite](https://img.shields.io/badge/Vite-8.3-646CFF?logo=vite&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-green)
 
-Aplikasi ini siap dideploy langsung ke **Vercel** maupun **Netlify** dengan konfigurasi otomatis (*zero configuration*).
+Aplikasi web manajemen perkuliahan profesional untuk mengelola, mengacak, dan menjadwalkan rotasi **Penanggung Jawab (PJ)** mata kuliah secara adil, transparan, dan terstruktur. Dirancang khusus untuk perguruan tinggi, ketua tingkat (komti), dosen pengampu, dan mahasiswa.
 
----
-
-## ✨ Fitur Utama
-
-- 🔐 **Autentikasi & Kontrol Akses Berbasis Peran (RBAC)**:
-  - **Administrator / Komti**: Terproteksi PIN/Kata Sandi (PIN bawaan: `123456`, dapat diubah sendiri). Memiliki hak akses penuh untuk mengacak jadwal, menambah mata kuliah, menukar mahasiswa (swap), dan mengedit data.
-  - **Mahasiswa (View-Only)**: Mahasiswa dapat melihat jadwal kelas, mencari giliran tugas pribadi, mengunduh format broadcast WhatsApp, dan mencetak dokumen tanpa risiko merusak data jadwal.
-
-- 🪄 **Autofill Otomatis Dosen, Mata Kuliah & 16 Silabus**:
-  - Menyediakan template kurikulum siap pakai (misal: *Pemrograman Web Lanjut*, *Basis Data Terdistribusi*, *Kecerdasan Buatan*, *Jaringan Komputer*, *Rekayasa Perangkat Lunak*).
-  - Ketika template dipilih, sistem **mengisi otomatis seketika**:
-    - Kode MK & Nama Mata Kuliah
-    - Dosen Pengampu & Gelar Akademik
-    - Hari, Jam Kuliah, dan Ruangan Lab
-    - **16 Pertemuan materi / pokok bahasan lengkap** (termasuk jadwal UTS di minggu ke-8 dan UAS di minggu ke-16).
-  - Dilengkapi fitur Master Dosen & Preset Ruangan untuk pengisian cepat satu-klik.
-
-- 🔍 **Cek Jadwal Tugas Saya (Personal Schedule Lookup)**:
-  - Mahasiswa dapat memilih nama atau memasukkan NIM untuk langsung memfilter daftar sesi dan tanggal giliran tugas masing-masing.
-
-- 🎲 **Smart Rotation Generator**:
-  - Algoritma pembagian giliran adil (*Fair Rotation Algorithm*): Memastikan setiap mahasiswa bertugas 1x sebelum putaran giliran ke-2 dimulai.
-  - Pilihan jumlah PJ per pertemuan: 1 orang, 2 orang (pasangan/duo), atau 3 orang.
-  - Metode penugasan: **Acak Adil (Fair Random)**, **Urut Berdasarkan NIM**, atau **Urut Berdasarkan Alfabetis Nama (A-Z)**.
-
-- 🔄 **Fitur Tukar Giliran Penugasan (Swap PJ)**:
-  - Jika ada mahasiswa yang berhalangan sakit atau izin pada jadwal tertentu, jadwal dapat ditukar dengan mahasiswa lain antar pertemuan dalam hitungan detik.
-
-- 👥 **Manajemen Mahasiswa & Bulk Paste**:
-  - **Bulk Import / Paste Pintar**: Salin dan tempel daftar nama langsung dari chat WhatsApp atau Excel. Parser otomatis mendeteksi NIM, Nama, dan No. HP/WhatsApp.
-  - Statistik pemerataan tugas (*Fairness meter*) untuk memantau beban penugasan seluruh anggota kelas.
-
-- 🖨️ **Ekspor Dokumen & Cadangan Data**:
-  - **Cetak Dokumen Resmi (PDF)**: Layout dokumen akademik standar perguruan tinggi lengkap dengan lembar tanda tangan pengesahan Dosen Pengampu & Ketua Tingkat.
-  - **Export Spreadsheet (CSV)** untuk rekapitulasi data.
-  - **Salin Pesan WhatsApp 1-Klik**: Template pengingat kuliah dengan format rapi dan poin tugas PJ siap kirim ke grup kelas.
-  - **Backup & Restore JSON**: Simpan data atau pindahkan ke perangkat lain secara mandiri.
+Siap dideploy langsung ke **Vercel** maupun **Netlify** dengan konfigurasi otomatis (*zero-config*).
 
 ---
 
-## 🚀 Cara Menjalankan di Lokal (Local Development)
+## ✨ Fitur Unggulan
 
-Pastikan Anda telah menginstal [Node.js](https://nodejs.org/) (versi 18 ke atas).
+### 1. 🔒 Gated Access & Sistem Kontrol Pengguna Penuh (Tanpa ID Kelas)
+- **Akses Tertutup Total (*Zero Public Leak*)**: Pengunjung yang belum login tidak dapat melihat dashboard, jadwal, maupun data mahasiswa kelas.
+- **Tanpa Kode/ID Kelas**: Pendaftaran dan login murni menggunakan kredensial individual (**Username/NIM** & **Kata Sandi**).
+- **Sistem Persetujuan Admin (*Approval Queue*)**: Pendaftar baru berstatus *Pending* dan tidak dapat masuk sampai disetujui langsung oleh Pemilik Kelas melalui panel admin.
+- **Buka/Tutup Pendaftaran Publik**: Pemilik dapat mematikan form registrasi mandiri agar pihak luar tidak dapat mendaftar.
+- **Auto-Heal & Reset Akses**: Dilengkapi tombol reset darurat di layar login dan parameter `?reset=true` untuk kemudahan pemulihan.
+
+### 2. 📋 Smart SIAKAD Schedule Parser (Import Jadwal Otomatis)
+- Cukup salin teks jadwal mentah dari portal akademik/website kampus (SIAKAD) dan tempel ke sistem:
+  ```text
+  1	IF611347	Data Mining	D	- Senin, 08:50:00 s/d 10:30:00
+  - R2-2 FSI
+  - Yulison Herry Chrisnanto, S.T., M.T.		-
+  ```
+- Sistem otomatis mengekstrak:
+  - Kode & Nama Mata Kuliah
+  - Nama Dosen Pengampu & Gelar Akademik
+  - Hari Kuliah, Jam Mulai & Selesai (format dinormalkan)
+  - Ruangan Kuliah / Laboratorium
+- **Pembuatan 16 Sesi Otomatis**: Pertemuan dihitung berdasarkan hari kuliah, lengkap dengan penamaan otomatis untuk **Pertemuan 8 (UTS)** dan **Pertemuan 16 (UAS)**.
+
+### 3. 👥 Smart Student Importer & Deduplikasi Otomatis
+- Menerima format daftar mahasiswa berpembatas pipa (`|`):
+  ```text
+  Students
+  2450081111 | SOFYAN HADI SUMARNO
+  2450081112 | RIFKI ANUGRAH PERDANA
+  ```
+- Mengabaikan header non-data secara otomatis.
+- **Penyaringan Duplikasi NIM**: Mendeteksi dan menghapus data ganda secara otomatis sehingga daftar rotasi tetap bersih dan adil.
+- **Generate Akun Massal**: Pemilik dapat membuat akun secara massal untuk seluruh mahasiswa di kelas dengan 1 klik (Username = NIM, Kata sandi awal = NIM).
+
+### 4. 🎲 Smart Rotation Generator & Penugasan PJ
+- **Fair Rotation Algorithm**: Memastikan setiap mahasiswa bertugas minimal 1x sebelum putaran giliran berikutnya dimulai.
+- Pilihan format giliran: **1 PJ**, **2 PJ (Duet/Partner)**, atau **3 PJ per pertemuan**.
+- Metode pembagian:
+  - **Acak Adil (*Fair Random*)**
+  - **Urut Berdasarkan NIM**
+  - **Urut Berdasarkan Alfabetis Nama (A-Z)**
+- **Fitur Tukar Giliran (*Swap PJ*)**: Memudahkan pertukaran jadwal antar mahasiswa jika ada yang berhalangan hadir atau sakit.
+
+### 5. 🖨️ Ekspor Dokumen Resmi & Cadangan Data
+- **Cetak Dokumen Akademik Resmi (PDF)**: Format dokumen standar perguruan tinggi lengkap dengan kolom tanda tangan legalitas Dosen Pengampu & Ketua Tingkat.
+- **Template Broadcast WhatsApp 1-Klik**: Format pengingat jadwal perkuliahan rapi siap kirim ke grup kelas.
+- **Ekspor Spreadsheet (CSV)** untuk rekapitulasi nilai dan kehadiran.
+- **Backup & Restore JSON**: Cadangkan seluruh data atau pulihkan data antar perangkat tanpa internet.
+
+---
+
+## 🚀 Panduan Menjalankan di Lokal (Local Development)
+
+Pastikan telah menginstal **Node.js** (versi 18 ke atas) dan **npm**.
 
 1. **Clone repository**:
    ```bash
@@ -63,39 +83,65 @@ Pastikan Anda telah menginstal [Node.js](https://nodejs.org/) (versi 18 ke atas)
    ```bash
    npm run dev
    ```
-   Buka browser pada alamat yang ditampilkan (biasanya `http://localhost:5173`).
+   Buka browser di `http://localhost:5173`.
 
-4. **Build untuk production**:
+4. **Build untuk produksi**:
    ```bash
    npm run build
    ```
 
 ---
 
-## 🌐 Cara Deploy ke Vercel & Netlify
+## 🌐 Panduan Deploy ke Vercel & Netlify
 
-Repository ini sudah dilengkapi file konfigurasi `vercel.json` dan `netlify.toml`.
+Proyek ini telah dikonfigurasi untuk langsung dideploy tanpa konfigurasi tambahan (*zero-config*).
 
-### Opsi 1: Deploy ke Vercel (Disarankan)
-1. Buka [vercel.com](https://vercel.com) dan login dengan akun GitHub Anda.
-2. Klik **"Add New..."** lalu pilih **"Project"**.
-3. Import repository **`rotasi-pj-matkul`**.
-4. Vercel akan mendeteksi framework **Vite** secara otomatis:
+### Deploy ke Vercel (Rekomendasi)
+1. Buka [Vercel](https://vercel.com) dan login dengan akun GitHub Anda.
+2. Klik **"Add New..."** &rarr; **"Project"**.
+3. Pilih repository **`rotasi-pj-matkul`**.
+4. Pengaturan build otomatis terdeteksi:
+   - **Framework Preset**: Vite
    - **Build Command**: `npm run build`
    - **Output Directory**: `dist`
-5. Klik **Deploy**!
+5. *(Opsional)* Tambahkan Environment Variable `VITE_MASTER_KEY` sebagai kunci darurat.
+6. Klik **Deploy**!
 
-### Opsi 2: Deploy ke Netlify
-1. Buka [netlify.com](https://netlify.com) dan pilih **"Add new site"** > **"Import an existing project"**.
+### Deploy ke Netlify
+1. Buka [Netlify](https://netlify.com) dan pilih **"Add new site"** &rarr; **"Import an existing project"**.
 2. Pilih repository **`rotasi-pj-matkul`**.
-3. Netlify akan otomatis membaca konfigurasi `netlify.toml`:
-   - **Build command**: `npm run build`
+3. Netlify akan membaca konfigurasi `netlify.toml`:
+   - **Build Command**: `npm run build`
    - **Publish directory**: `dist`
 4. Klik **Deploy Site**!
 
 ---
 
-## 📄 Kredensial Pengujian Bawaan
+## 🔑 Panduan Inisialisasi & Reset Akun
 
-- **Peran Mahasiswa**: Bebas akses (View-Only).
-- **Peran Pengelola (Komti / Admin)**: Kata Sandi / PIN bawaan: `123456` (dapat diubah di menu ikon Kunci / Pengaturan Keamanan).
+### Setup Pertama Kali
+Saat aplikasi pertama kali dibuka setelah deploy, sistem akan menampilkan form **Inisialisasi Pemilik Kelas**:
+1. Masukkan **Nama Lengkap**, **Username**, dan **Kata Sandi** pilihan Anda.
+2. Klik **Aktifkan Sistem Sebagai Pemilik**.
+3. Anda akan langsung otomatis masuk sebagai **Pemilik Utama (Owner/Admin)**.
+
+### Reset Akun / Pemulihan Akses
+Jika Anda lupa kata sandi atau ingin mereset akun pengelola:
+- **Tombol Reset di Form Login**: Klik tautan *"Reset Akun Pengelola & Setup Baru"* di bagian bawah form login.
+- **Parameter URL**: Tambahkan `?reset=true` di akhir URL aplikasi Anda di browser untuk mereset data autentikasi dan memulai setup admin baru.
+
+---
+
+## 🛠️ Tech Stack
+
+- **Frontend**: React 19, TypeScript
+- **Styling**: Tailwind CSS v4, Lucide React Icons
+- **Bundler**: Vite 8
+- **Storage**: LocalStorage & SessionStorage API dengan validasi skema
+- **CI/CD**: GitHub Actions
+
+---
+
+## 📄 Lisensi
+
+Proyek ini berlisensi [MIT](LICENSE). Dibuat untuk mendukung kelancaran perkuliahan mahasiswa dan ketua tingkat di perguruan tinggi.
